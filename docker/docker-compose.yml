@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: enterprise-rag-db
+    environment:
+      POSTGRES_DB: enterprise_rag
+      POSTGRES_USER: rag_admin
+      POSTGRES_PASSWORD: rag_password_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag_admin -d enterprise_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

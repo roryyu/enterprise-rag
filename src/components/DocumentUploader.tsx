@@ -1,14 +1,98 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import styles from "./DocumentUploader.module.css";
+
+interface UploadResult {
+  filename: string;
+  status: string;
+  docId?: string;
+}
 
 export default function DocumentUploader() {
   const [kbId, setKbId] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [results, setResults] = useState<
-    { filename: string; status: string }[]
-  >([]);
+  const [results, setResults] = useState<UploadResult[]>([]);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 轮询检查文档处理状态
+  const pollAllDocuments = useCallback(async () => {
+    // 创建需要检查的文档快照
+    const itemsToCheck = results
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status === "处理中" && result.docId);
+
+    if (itemsToCheck.length === 0) {
+      return false; // 没有需要处理的项目
+    }
+
+    let hasRemainingProcessing = false;
+
+    for (const { result, index } of itemsToCheck) {
+      try {
+        const res = await fetch(`/api/documents/${result.docId}`);
+        if (res.ok) {
+          const data = await res.json();
+
+          if (data.status === "done") {
+            setResults((prev) => {
+              const updated = [...prev];
+              updated[index] = { ...updated[index]!, status: "处理完成" };
+              return updated;
+            });
+          } else if (data.status === "failed") {
+            setResults((prev) => {
+              const updated = [...prev];
+              updated[index] = { ...updated[index]!, status: "处理失败" };
+              return updated;
+            });
+          } else {
+            // 仍在处理中
+            hasRemainingProcessing = true;
+          }
+        } else {
+          hasRemainingProcessing = true;
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
+        hasRemainingProcessing = true;
+      }
+    }
+
+    return hasRemainingProcessing;
+  }, [results]);
+
+  // 管理轮询
+  useEffect(() => {
+    const hasProcessingItems = results.some(
+      (r) => r.status === "处理中" && r.docId,
+    );
+
+    if (!hasProcessingItems) {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+      return;
+    }
+
+    if (!pollingRef.current) {
+      pollingRef.current = setInterval(async () => {
+        const hasRemaining = await pollAllDocuments();
+        if (!hasRemaining && pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      }, 2000); // 每 2 秒检查一次
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [results, pollAllDocuments]);
 
   const handleUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,7 +100,7 @@ export default function DocumentUploader() {
       if (!files || !kbId) return;
 
       setUploading(true);
-      const newResults: { filename: string; status: string }[] = [];
+      const newResults: UploadResult[] = [];
 
       for (const file of Array.from(files)) {
         const formData = new FormData();
@@ -33,7 +117,11 @@ export default function DocumentUploader() {
           if (res.status === 409) {
             newResults.push({ filename: file.name, status: "已存在(跳过)" });
           } else if (res.ok || res.status === 202) {
-            newResults.push({ filename: file.name, status: "处理中" });
+            newResults.push({
+              filename: file.name,
+              status: "处理中",
+              docId: data.docId,
+            });
           } else {
             newResults.push({
               filename: file.name,
@@ -54,6 +142,7 @@ export default function DocumentUploader() {
 
   const getStatusClass = (status: string) => {
     if (status === "处理中") return styles.statusProcessing;
+    if (status === "处理完成") return styles.statusSuccess;
     if (status.includes("失败")) return styles.statusFailed;
     return styles.statusDefault;
   };

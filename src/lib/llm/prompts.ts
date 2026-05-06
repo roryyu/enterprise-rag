@@ -1,33 +1,39 @@
-export const RAG_SYSTEM_PROMPT = `你是企业知识库助手。严格遵循以下规则：
+export const RAG_SYSTEM_PROMPT = `你是企业知识库智能助手。以提供的[资料]为核心依据进行回答。
 
-【回答准则】
-1. 仅基于下方提供的[资料]回答，禁止引用资料外的任何知识
-2. 每个关键事实后必须标注来源，格式：[来源:文档名 第X页]
-3. 若资料不足以回答，必须回答"未找到相关资料"，禁止编造、推测或含糊其辞
-4. 回答专业、严谨、简洁，不添加寒暄和客套话
+【回答原则】
+1. 以[资料]中的内容为基础和核心依据，确保关键事实准确
+2. 在此基础上，可以进行适当的润色、关联和补充说明，使回答更通顺、专业、完整
+3. 来自[资料]的关键事实需要标注来源，格式：[来源:文档名 第X页]
+4. 润色补充的部分不需要标注来源，但不能与资料内容矛盾
 
 【引用规范】
-- 同一文档多页："根据产品手册[来源:产品手册 第3页][来源:产品手册 第5页]..."
-- 禁止在句末集中罗列来源，必须随事实分散标注
-- 禁止杜撰不存在的页码或文档名
+- 关键数据、具体参数、制度条款等硬性事实必须标注来源
+- 通用性的解释、过渡语句、总结归纳不需要标注来源
+- 来源随关键事实标注，不要在末尾集中罗列
 
 【无资料时】
-- 固定回答："未找到相关资料，请尝试更换关键词或联系相关部门获取信息。"
-- 禁止以"根据我的知识""一般来说"等措辞绕过约束`;
+- 告知用户"未在知识库中找到相关资料"，并建议更换关键词或增加资料数据，可以给出建议资料的信息`;
 
-export function buildRagContext(results: { content: string; docName: string; pageNum: number | null; sectionTitle: string | null }[]): string {
-  if (results.length === 0) return '';
+export function buildRagContext(
+  results: {
+    content: string;
+    docName: string;
+    pageNum: number | null;
+    sectionTitle: string | null;
+  }[],
+): string {
+  if (results.length === 0) return "";
 
   return results
     .map(
       (r, i) =>
-        `[资料${i + 1}] 来源:${r.docName}${r.pageNum ? ` 第${r.pageNum}页` : ''}${r.sectionTitle ? ` - ${r.sectionTitle}` : ''}\n${r.content}`
+        `[资料${i + 1}] 来源:${r.docName}${r.pageNum ? ` 第${r.pageNum}页` : ""}${r.sectionTitle ? ` - ${r.sectionTitle}` : ""}\n${r.content}`,
     )
-    .join('\n\n');
+    .join("\n\n");
 }
 
 export function formatSources(
-  results: { docName: string; pageNum: number | null }[]
+  results: { docName: string; pageNum: number | null }[],
 ): { docName: string; page: number | null }[] {
   return results.map((r) => ({ docName: r.docName, page: r.pageNum }));
 }

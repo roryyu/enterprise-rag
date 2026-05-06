@@ -71,27 +71,88 @@
   max-width: 70%;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  white-space: pre-wrap;
   font-size: 0.875rem;
+  line-height: 1.6;
+  overflow: visible;
+  position: relative;
 }
 
 .bubbleUser {
   background: var(--color-blue-600);
   color: #fff;
+  white-space: pre-wrap;
 }
 
 .bubbleAssistant {
   background: #fff;
   border: 1px solid var(--color-gray-200);
   color: var(--color-gray-800);
+  overflow: visible;
+  max-width: 70%;
 }
 
-.sources {
-  margin-top: 0.5rem;
+.bubbleAssistant p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* 来源角标 */
+.ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.2rem;
+  margin: 0 0.1rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-primary);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-100);
+  border-radius: 0.55rem;
+  vertical-align: super;
+  cursor: default;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+
+/* 来源列表 */
+.refList {
+  margin-top: 0.625rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--color-gray-200);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-gray-500);
+  line-height: 1.6;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.refItem {
+  display: block;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.refNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.9rem;
+  height: 0.9rem;
+  padding: 0 0.15rem;
+  margin-right: 0.15rem;
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-primary);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-blue-100);
+  border-radius: 0.45rem;
+  vertical-align: middle;
 }
 
 .loading {

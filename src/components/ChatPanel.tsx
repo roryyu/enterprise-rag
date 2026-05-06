@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, Fragment } from "react";
 import styles from "./ChatPanel.module.css";
 
 interface Source {
@@ -13,6 +13,92 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+}
+
+// 解析内容中的 [来源:文档名 第X页] 标注，提取为角标
+function parseContentWithRefs(text: string) {
+  const regex = /\[来源:(.+?)(?:\s+第(\d+)页)?\]/g;
+  const parts: { type: "text" | "ref"; value: string; page?: string }[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", value: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: "ref", value: match[1]!.trim(), page: match[2] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: "text", value: text.slice(lastIndex) });
+  }
+
+  // 去重收集来源列表
+  const refMap = new Map<
+    string,
+    { docName: string; page: string | null; index: number }
+  >();
+  const refIndices: number[] = [];
+  let refCounter = 0;
+
+  for (const part of parts) {
+    if (part.type === "ref") {
+      const key = `${part.value}|${part.page || ""}`;
+      if (!refMap.has(key)) {
+        refCounter++;
+        refMap.set(key, {
+          docName: part.value,
+          page: part.page || null,
+          index: refCounter,
+        });
+      }
+      refIndices.push(refMap.get(key)!.index);
+    }
+  }
+
+  return { parts, refList: [...refMap.values()], refIndices };
+}
+
+// 渲染带角标的消息内容
+function MessageContent({ content }: { content: string }) {
+  const { parts, refList, refIndices } = useMemo(
+    () => parseContentWithRefs(content),
+    [content],
+  );
+
+  // 如果没有来源标注，直接渲染纯文本
+  if (refList.length === 0) {
+    return <p>{content}</p>;
+  }
+
+  let refIndexPointer = 0;
+  return (
+    <>
+      <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+        {parts.map((part, i) => {
+          if (part.type === "text") {
+            return <Fragment key={i}>{part.value}</Fragment>;
+          }
+          const correctIndex = refIndices[refIndexPointer++]!;
+          return (
+            <sup key={i} className={styles.ref}>
+              {correctIndex}
+            </sup>
+          );
+        })}
+      </p>
+      <div className={styles.refList}>
+        {refList.map((ref, i) => (
+          <div key={i} className={styles.refItem}>
+            <sup className={styles.refNum}>{ref.index}</sup>
+            {ref.docName}
+            {ref.page ? ` 第${ref.page}页` : ""}
+          </div>
+        ))}
+      </div>
+    </>
+  );
 }
 
 export default function ChatPanel() {
@@ -158,14 +244,10 @@ export default function ChatPanel() {
             <div
               className={`${styles.bubble} ${msg.role === "user" ? styles.bubbleUser : styles.bubbleAssistant}`}
             >
-              {msg.content}
-              {msg.sources && msg.sources.length > 0 && (
-                <div className={styles.sources}>
-                  📎 来源：
-                  {msg.sources
-                    .map((s) => `${s.docName}${s.page ? ` 第${s.page}页` : ""}`)
-                    .join(" | ")}
-                </div>
+              {msg.role === "user" ? (
+                <p>{msg.content}</p>
+              ) : (
+                <MessageContent content={msg.content} />
               )}
             </div>
           </div>

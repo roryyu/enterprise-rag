@@ -105,6 +105,10 @@
   color: var(--color-blue-600);
 }
 
+.statusSuccess {
+  color: var(--color-green-600);
+}
+
 .statusFailed {
   color: var(--color-red-600);
 }

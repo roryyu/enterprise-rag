@@ -1,9 +1,11 @@
-import { db } from '@/lib/db';
-import { chunks, kbPermissions } from '@/lib/db/schema';
-import { generateEmbedding } from '@/lib/ingestion/embedder';
-import { sql, eq, and, inArray } from 'drizzle-orm';
+import { db } from "@/lib/db";
+import { chunks, kbPermissions } from "@/lib/db/schema";
+import { generateEmbedding } from "@/lib/ingestion/embedder";
+import { sql, eq, and, inArray } from "drizzle-orm";
 
-const SIMILARITY_THRESHOLD = parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7');
+const SIMILARITY_THRESHOLD = parseFloat(
+  process.env.SIMILARITY_THRESHOLD || "0.7",
+);
 const TOP_K = 20;
 
 export interface SearchResult {
@@ -20,7 +22,7 @@ export interface SearchResult {
 export async function vectorSearch(
   query: string,
   kbIds: string[],
-  topK: number = TOP_K
+  topK: number = TOP_K,
 ): Promise<SearchResult[]> {
   const queryEmbedding = await generateEmbedding(query);
 
@@ -36,7 +38,10 @@ export async function vectorSearch(
       1 - (c.embedding <=> ${JSON.stringify(queryEmbedding)}::vector) as score
     FROM chunks c
     JOIN documents d ON c.doc_id = d.id
-    WHERE c.kb_id = ANY(${kbIds})
+    WHERE c.kb_id = ANY(ARRAY[${sql.join(
+      kbIds.map((id) => sql`${id}`),
+      sql`, `,
+    )}]::uuid[])
     AND 1 - (c.embedding <=> ${JSON.stringify(queryEmbedding)}::vector) > ${SIMILARITY_THRESHOLD}
     ORDER BY c.embedding <=> ${JSON.stringify(queryEmbedding)}::vector
     LIMIT ${topK}
@@ -57,9 +62,9 @@ export async function vectorSearch(
 export async function keywordSearch(
   query: string,
   kbIds: string[],
-  topK: number = TOP_K
+  topK: number = TOP_K,
 ): Promise<SearchResult[]> {
-  const { extractKeywords } = await import('@/lib/ingestion/embedder');
+  const { extractKeywords } = await import("@/lib/ingestion/embedder");
   const keywords = extractKeywords(query);
 
   if (keywords.length === 0) return [];
@@ -76,8 +81,14 @@ export async function keywordSearch(
       ${0.5} as score
     FROM chunks c
     JOIN documents d ON c.doc_id = d.id
-    WHERE c.kb_id = ANY(${kbIds})
-    AND c.keywords && ${keywords}
+    WHERE c.kb_id = ANY(ARRAY[${sql.join(
+      kbIds.map((id) => sql`${id}`),
+      sql`, `,
+    )}]::uuid[])
+    AND c.keywords && ARRAY[${sql.join(
+      keywords.map((k) => sql`${k}`),
+      sql`, `,
+    )}]::text[]
     LIMIT ${topK}
   `);
 
@@ -93,11 +104,18 @@ export async function keywordSearch(
   }));
 }
 
-export async function getAccessibleKbIds(department: string): Promise<string[]> {
+export async function getAccessibleKbIds(
+  department: string,
+): Promise<string[]> {
   const perms = await db
     .select({ kbId: kbPermissions.kbId })
     .from(kbPermissions)
-    .where(and(eq(kbPermissions.department, department), eq(kbPermissions.canRead, true)));
+    .where(
+      and(
+        eq(kbPermissions.department, department),
+        eq(kbPermissions.canRead, true),
+      ),
+    );
 
   return perms.map((p) => p.kbId!);
 }

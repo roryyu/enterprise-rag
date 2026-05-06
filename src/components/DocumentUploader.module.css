@@ -1,0 +1,114 @@
+.container {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.card > * + * {
+  margin-top: 1rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-gray-700);
+  margin-bottom: 0.25rem;
+}
+
+.textInput {
+  width: 100%;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: #fff;
+  color: var(--foreground);
+}
+
+.fileInput {
+  display: block;
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--color-gray-500);
+}
+
+.fileInput::file-selector-button {
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--color-blue-50);
+  color: var(--color-blue-600);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.fileInput::file-selector-button:hover {
+  background: var(--color-blue-100);
+}
+
+.helpText {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-gray-400);
+}
+
+.results {
+  margin-top: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+}
+
+.resultsHeader {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.resultsTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.resultsList {
+  list-style: none;
+}
+
+.resultsList > * + * {
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.resultItem {
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.statusProcessing {
+  color: var(--color-blue-600);
+}
+
+.statusFailed {
+  color: var(--color-red-600);
+}
+
+.statusDefault {
+  color: var(--color-gray-500);
+}

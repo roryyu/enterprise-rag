@@ -1,19 +1,22 @@
-import { NextRequest } from 'next/server';
-import { db } from '@/lib/db';
-import { conversations, messages } from '@/lib/db/schema';
-import { hybridSearch } from '@/lib/retrieval/hybrid';
-import { streamChat } from '@/lib/llm/client';
-import { checkRateLimit } from '@/lib/rate-limit';
-import { getDepartmentFromRequest } from '@/lib/auth/permissions';
-import { eq, desc } from 'drizzle-orm';
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { conversations, messages } from "@/lib/db/schema";
+import { hybridSearch } from "@/lib/retrieval/hybrid";
+import { streamChat } from "@/lib/llm/client";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getDepartmentFromRequest } from "@/lib/auth/permissions";
+import { eq, desc } from "drizzle-orm";
 
-const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '10', 10);
-const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10);
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "10", 10);
+const RATE_LIMIT_WINDOW_MS = parseInt(
+  process.env.RATE_LIMIT_WINDOW_MS || "60000",
+  10,
+);
 
 function getClientIp(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0]!.trim();
-  return request.headers.get('x-real-ip') || 'unknown';
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]!.trim();
+  return request.headers.get("x-real-ip") || "unknown";
 }
 
 export async function POST(request: NextRequest) {
@@ -23,38 +26,48 @@ export async function POST(request: NextRequest) {
     conversationId?: string;
   };
 
-  if (!query || typeof query !== 'string' || query.trim().length === 0) {
-    return new Response(JSON.stringify({ error: 'query is required' }), {
+  if (!query || typeof query !== "string" || query.trim().length === 0) {
+    return new Response(JSON.stringify({ error: "query is required" }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
   const department = getDepartmentFromRequest(request);
   if (!department || department.length === 0 || department.length > 50) {
-    return new Response(JSON.stringify({ error: 'department header invalid' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ error: "department header invalid" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   // Rate limiting by IP + department (prevents bypass by changing department)
   const clientIp = getClientIp(request);
   const rateLimitKey = `chat:${clientIp}:${department}`;
-  const rateLimit = checkRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  const rateLimit = checkRateLimit(
+    rateLimitKey,
+    RATE_LIMIT_MAX,
+    RATE_LIMIT_WINDOW_MS,
+  );
   if (!rateLimit.allowed) {
-    return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
+    return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
       status: 429,
       headers: {
-        'Content-Type': 'application/json',
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetTime / 1000)),
+        "Content-Type": "application/json",
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": String(Math.ceil(rateLimit.resetTime / 1000)),
       },
     });
   }
 
   // Hybrid search with permission filtering
   const { results: searchResults } = await hybridSearch(query, department);
+
+  // Load conversation history
+  let convId = conversationId;
 
   // Early return if no relevant documents found
   if (searchResults.length === 0) {
@@ -63,27 +76,26 @@ export async function POST(request: NextRequest) {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: 'content', content: '未找到相关资料，请尝试更换关键词或上传相关文档。' }) }\n\n`
-          )
+            `data: ${JSON.stringify({ type: "content", content: "未找到相关资料，请尝试更换关键词或上传相关文档。" })}\n\n`,
+          ),
         );
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'done', conversationId: convId }) }\n\n`)
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "done", conversationId: convId })}\n\n`,
+          ),
         );
         controller.close();
       },
     });
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
       },
     });
   }
-
-  // Load conversation history
-  let convId = conversationId;
-  let history: { role: 'user' | 'assistant'; content: string }[] = [];
+  let history: { role: "user" | "assistant"; content: string }[] = [];
 
   if (convId) {
     const dbMessages = await db
@@ -94,11 +106,14 @@ export async function POST(request: NextRequest) {
       .limit(10);
     history = dbMessages
       .reverse()
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
   } else {
     const [conv] = await db
       .insert(conversations)
-      .values({ userId: 'anonymous', department, title: query.slice(0, 50) })
+      .values({ userId: "anonymous", department, title: query.slice(0, 50) })
       .returning();
     convId = conv!.id;
   }
@@ -106,13 +121,13 @@ export async function POST(request: NextRequest) {
   // Save user message
   await db.insert(messages).values({
     conversationId: convId,
-    role: 'user',
+    role: "user",
     content: query,
   });
 
   // Stream response
   const encoder = new TextEncoder();
-  let fullContent = '';
+  let fullContent = "";
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -125,7 +140,9 @@ export async function POST(request: NextRequest) {
             section: r.sectionTitle,
           }));
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "sources", sources })}\n\n`,
+            ),
           );
         }
 
@@ -133,14 +150,16 @@ export async function POST(request: NextRequest) {
         for await (const chunk of streamChat(query, searchResults, history)) {
           fullContent += chunk;
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`)
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "content", content: chunk })}\n\n`,
+            ),
           );
         }
 
         // Save assistant message
         await db.insert(messages).values({
           conversationId: convId!,
-          role: 'assistant',
+          role: "assistant",
           content: fullContent,
           sources: searchResults.map((r) => ({
             chunkId: r.chunkId,
@@ -152,12 +171,12 @@ export async function POST(request: NextRequest) {
 
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`
-          )
+            `data: ${JSON.stringify({ type: "done", conversationId: convId })}\n\n`,
+          ),
         );
         controller.close();
       } catch (error) {
-        console.error('Chat stream error:', error);
+        console.error("Chat stream error:", error);
         controller.error(error);
       }
     },
@@ -165,9 +184,9 @@ export async function POST(request: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }

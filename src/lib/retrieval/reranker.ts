@@ -1,5 +1,5 @@
-import { CohereClient } from 'cohere-ai';
-import { SearchResult } from './vector-search';
+import { CohereClient } from "cohere-ai";
+import { SearchResult } from "./vector-search";
 
 let cohere: CohereClient | null = null;
 function getCohere(): CohereClient {
@@ -23,10 +23,11 @@ export interface RerankResult {
 export async function rerank(
   query: string,
   results: SearchResult[],
-  topN: number = 5
+  topN: number = 5,
 ): Promise<RerankResult[]> {
   if (results.length === 0) return [];
-
+  return results.slice(0, topN).map((r) => ({ ...r }));
+  /*
   try {
     const response = await getCohere().v2.rerank({
       model: 'rerank-v3.5',
@@ -49,8 +50,10 @@ export async function rerank(
       };
     });
   } catch (error) {
-    console.error('Rerank failed, falling back to vector scores:', error);
+    //console.error('Rerank failed, falling back to vector scores:', error);
+    console.log('no rerank, use vector scores');
     // Fallback: use original scores
     return results.slice(0, topN).map((r) => ({ ...r }));
   }
+    */
 }

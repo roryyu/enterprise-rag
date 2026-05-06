@@ -1,15 +1,23 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 let openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!openai) {
-    openai = new OpenAI();
+    openai = new OpenAI({
+      apiKey:
+        process.env.OPENAI_EMBEDDING_API_KEY || process.env.OPENAI_API_KEY,
+      baseURL:
+        process.env.OPENAI_EMBEDDING_BASEURL ||
+        process.env.OPENAI_BASEURL ||
+        undefined,
+    });
   }
   return openai;
 }
 
-const EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-const BATCH_SIZE = 500;
+const EMBEDDING_MODEL =
+  process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+const BATCH_SIZE = 10;
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const response = await getOpenAI().embeddings.create({
@@ -19,20 +27,20 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   return response.data[0]!.embedding;
 }
 
-export async function generateEmbeddings(
-  texts: string[]
-): Promise<number[][]> {
+export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   const embeddings: number[][] = [];
-
+  console.log("Generating embeddings for", texts.length, "texts");
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {
     const batch = texts.slice(i, i + BATCH_SIZE);
     const response = await getOpenAI().embeddings.create({
       model: EMBEDDING_MODEL,
       input: batch,
+      dimensions: 1024,
     });
     for (const item of response.data) {
       embeddings.push(item.embedding);
     }
+    console.log("finished:" + i + "/" + texts.length);
   }
 
   return embeddings;
@@ -40,7 +48,10 @@ export async function generateEmbeddings(
 
 export function extractKeywords(text: string): string[] {
   const tokens: string[] = [];
-  const cleaned = text.replace(/[，。！？、；：""''【】《》（）\[\]{},.!?;:'"()]/g, ' ');
+  const cleaned = text.replace(
+    /[，。！？、；：""''【】《》（）\[\]{},.!?;:'"()]/g,
+    " ",
+  );
   const rawTokens = cleaned.split(/\s+/).filter(Boolean);
 
   for (const token of rawTokens) {

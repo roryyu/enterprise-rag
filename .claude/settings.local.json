@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(psql -h localhost -U rag_admin -d enterprise_rag -c \"SELECT 1\")",
+      "Bash(psql -h localhost -U postgres -c \"\\\\du\")",
+      "Bash(psql -h localhost -U postgres -c \"\\\\l\")",
+      "Bash(psql -h localhost -U roryyu -d postgres -c \"\\\\du\")",
+      "Bash(psql -h localhost -U roryyu -d postgres -c \"\\\\l\")",
+      "Bash(psql *)",
+      "Bash(PGPASSWORD=Aa123456 psql *)",
+      "Bash(brew list *)",
+      "Bash(pg_config --version)",
+      "Bash(brew install *)",
+      "Bash(brew unlink *)",
+      "Bash(brew link *)",
+      "Bash(brew info *)",
+      "Bash(cp /opt/homebrew/Cellar/pgvector/0.8.2/share/postgresql@17/extension/vector* /opt/homebrew/opt/postgresql@16/share/postgresql@16/extension/)",
+      "Bash(cp /opt/homebrew/Cellar/pgvector/0.8.2/lib/postgresql@17/vector.dylib /opt/homebrew/opt/postgresql@16/lib/postgresql@16/)",
+      "Bash(pg_config --pkglibdir)",
+      "Bash(pg_config --sharedir)",
+      "Bash(cp /opt/homebrew/Cellar/pgvector/0.8.2/lib/postgresql@17/vector.dylib /opt/homebrew/opt/postgresql@16/lib/postgresql/)",
+      "Bash(echo \"Dylib copied to $\\(pg_config --pkglibdir\\)\")",
+      "Read(//private/tmp/**)",
+      "Bash(tar xzf *)",
+      "Bash(PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config make install)",
+      "Bash(npx drizzle-kit *)",
+      "Bash(npm ls *)"
+    ]
+  }
+}

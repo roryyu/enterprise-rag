@@ -9,7 +9,7 @@ import {
   getIdentityFromRequest,
   checkPermission,
 } from "@/lib/auth/permissions";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { createIngestionTask } from "@/lib/ingestion/task-manager";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR
@@ -18,6 +18,58 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR
 const MAX_FILE_SIZE =
   parseInt(process.env.MAX_FILE_SIZE_MB || "50") * 1024 * 1024;
 const SUPPORTED_TYPES = ["pdf", "docx", "doc", "xlsx", "xls", "txt", "md"];
+
+export async function GET(request: NextRequest) {
+  // 1) 身份认证
+  let identity;
+  try {
+    identity = await getIdentityFromRequest(request);
+  } catch {
+    return NextResponse.json(
+      { error: "未提供有效的身份凭证" },
+      { status: 401 },
+    );
+  }
+
+  // 2) 校验知识库参数与读权限
+  const kbId = request.nextUrl.searchParams.get("kbId");
+  if (!kbId) {
+    return NextResponse.json({ error: "kbId is required" }, { status: 400 });
+  }
+
+  const canRead = await checkPermission(kbId, identity.department, "read");
+  if (!canRead) {
+    return NextResponse.json(
+      { error: "Forbidden: no read permission for this knowledge base" },
+      { status: 403 },
+    );
+  }
+
+  // 3) 查询未删除文档（含分块数统计）
+  try {
+    const rows = await db
+      .select({
+        id: documents.id,
+        kbId: documents.kbId,
+        filename: documents.filename,
+        fileType: documents.fileType,
+        status: documents.status,
+        contentHash: documents.contentHash,
+        version: documents.version,
+        chunkCount: sql<number>`(SELECT count(*)::int FROM chunks c WHERE c.doc_id = "documents"."id")`,
+        createdAt: documents.createdAt,
+        updatedAt: documents.updatedAt,
+      })
+      .from(documents)
+      .where(and(eq(documents.kbId, kbId), isNull(documents.deletedAt)))
+      .orderBy(desc(documents.createdAt));
+
+    return NextResponse.json({ documents: rows });
+  } catch (error) {
+    console.error("Document list error:", error);
+    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   // 1) 身份认证（dev 模式允许请求头，生产必须 JWT）

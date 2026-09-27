@@ -1,33 +1,66 @@
+/* ============================================================
+   全局设计系统 · 浅色科技风（Linear / Vercel 风格）
+   所有页面共享此 token 与背景，不得在页面内重复定义
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
+  /* 文本 / 描边 */
+  --ink-900: #0b1220;
+  --ink-700: #334155;
+  --ink-500: #64748b;
+  --ink-400: #94a3b8;
+  --hairline: rgba(15, 23, 42, 0.08);
+
+  /* 表面材质 */
+  --bg-page: #f4f6fb;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+
+  /* 品牌色 */
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-2: #0891b2;
+
+  /* 语义色 */
+  --blue: #2563eb;
+  --green: #059669;
+  --red: #dc2626;
+  --amber: #d97706;
+
+  /* 字体 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* 阴影 / 圆角 */
+  --shadow-card:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 32px -16px rgba(15, 23, 42, 0.12);
+  --radius-card: 14px;
+  --radius-control: 9px;
+
+  /* ---- 向后兼容旧 token（旧代码逐步迁移前不破坏） ---- */
+  --background: var(--bg-page);
+  --foreground: var(--ink-900);
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
   --color-gray-50: #f9fafb;
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-700: #374151;
+  --color-gray-400: var(--ink-400);
+  --color-gray-500: var(--ink-500);
+  --color-gray-700: var(--ink-700);
   --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
-  --color-red-600: #dc2626;
-  --color-blue-50: #eff6ff;
+  --color-gray-900: var(--ink-900);
+  --color-red-600: var(--red);
+  --color-blue-50: rgba(37, 99, 235, 0.09);
   --color-blue-100: #dbeafe;
-  --color-blue-600: #2563eb;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --color-blue-600: var(--blue);
+  --mono: var(--font-mono);
 }
-/*
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --color-gray-50: #111827;
-    --color-gray-800: #f3f4f6;
-    --color-gray-900: #f9fafb;
-  }
-}
-*/
+
 *,
 *::before,
 *::after {
@@ -40,8 +73,7 @@ html,
 body {
   height: 100%;
   font-family: var(--font-sans);
-  background: var(--background);
-  color: var(--foreground);
+  color: var(--ink-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -50,6 +82,14 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: var(--bg-page);
+  /* 点阵网格 + 靛蓝/青色渐变光晕，所有页面统一背景 */
+  background-image:
+    radial-gradient(52rem 24rem at 12% -8%, rgba(79, 70, 229, 0.12), transparent 60%),
+    radial-gradient(44rem 22rem at 100% 0%, rgba(8, 145, 178, 0.1), transparent 55%),
+    radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 22px 22px;
+  background-attachment: fixed, fixed, fixed;
 }
 
 a {
@@ -59,6 +99,25 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+/* ---------- 共享材质类（各页面 CSS module 可直接组合使用） ---------- */
+
+.glassCard {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 统一焦点环：键盘可达，点击不显环 */
+.focusRing:focus-visible {
+  outline: none;
+  border-color: rgba(79, 70, 229, 0.55);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }

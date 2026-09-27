@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import BackHome from "./BackHome";
 import styles from "./ChatPanel.module.css";
 
 interface Source {
@@ -239,7 +240,10 @@ export default function ChatPanel() {
     <div className={styles.container}>
       {/* Header */}
       <header className={styles.header}>
-        <h1 className={styles.headerTitle}>企业知识库问答</h1>
+        <div className={styles.headerLeft}>
+          <BackHome />
+          <h1 className={styles.headerTitle}>企业知识库问答</h1>
+        </div>
         <div className={styles.headerControls}>
           <label className={styles.deptLabel}>部门:</label>
           <select
@@ -280,7 +284,7 @@ export default function ChatPanel() {
           </div>
         ))}
         {loading && messages[messages.length - 1]?.role === "user" && (
-          <div className={styles.loading}>正在检索并生成回答...</div>
+          <div className={styles.loading}>正在检索并生成回答…</div>
         )}
       </div>
 
@@ -291,7 +295,7 @@ export default function ChatPanel() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="输入您的问题..."
+            placeholder="输入您的问题，例如：差旅费报销标准…"
             className={styles.input}
             disabled={loading}
           />

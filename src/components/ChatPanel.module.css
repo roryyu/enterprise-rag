@@ -75,6 +75,7 @@
   line-height: 1.6;
   overflow: visible;
   position: relative;
+  padding:1.5rem;
 }
 
 .bubbleUser {

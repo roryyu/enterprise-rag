@@ -4,7 +4,7 @@ import { conversations, messages } from "@/lib/db/schema";
 import { hybridSearch } from "@/lib/retrieval/hybrid";
 import { streamChat } from "@/lib/llm/client";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { getDepartmentFromRequest } from "@/lib/auth/permissions";
+import { getIdentityFromRequest } from "@/lib/auth/permissions";
 import { eq, desc } from "drizzle-orm";
 
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "10", 10);
@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const department = getDepartmentFromRequest(request);
-  if (!department || department.length === 0 || department.length > 50) {
+  const identity = await getIdentityFromRequest(request);
+  if (!identity.department || identity.department.length === 0 || identity.department.length > 50) {
     return new Response(
-      JSON.stringify({ error: "department header invalid" }),
+      JSON.stringify({ error: "Invalid department in identity" }),
       {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limiting by IP + department (prevents bypass by changing department)
   const clientIp = getClientIp(request);
-  const rateLimitKey = `chat:${clientIp}:${department}`;
+  const rateLimitKey = `chat:${clientIp}:${identity.department}`;
   const rateLimit = checkRateLimit(
     rateLimitKey,
     RATE_LIMIT_MAX,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Hybrid search with permission filtering
-  const { results: searchResults } = await hybridSearch(query, department);
+  const { results: searchResults } = await hybridSearch(query, identity.department);
 
   // Load conversation history
   let convId = conversationId;
@@ -113,7 +113,11 @@ export async function POST(request: NextRequest) {
   } else {
     const [conv] = await db
       .insert(conversations)
-      .values({ userId: "anonymous", department, title: query.slice(0, 50) })
+      .values({ 
+        userId: identity.userId, 
+        department: identity.department, 
+        title: query.slice(0, 50) 
+      })
       .returning();
     convId = conv!.id;
   }

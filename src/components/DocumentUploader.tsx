@@ -9,11 +9,37 @@ interface UploadResult {
   docId?: string;
 }
 
+interface KnowledgeBase {
+  id: string;
+  name: string;
+}
+
 export default function DocumentUploader() {
   const [kbId, setKbId] = useState("");
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [loadingKbs, setLoadingKbs] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<UploadResult[]>([]);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 获取知识库列表
+  useEffect(() => {
+    const fetchKnowledgeBases = async () => {
+      try {
+        const res = await fetch('/api/knowledge');
+        if (res.ok) {
+          const data = await res.json();
+          setKnowledgeBases(data.knowledgeBases);
+        }
+      } catch (error) {
+        console.error("获取知识库列表失败:", error);
+      } finally {
+        setLoadingKbs(false);
+      }
+    };
+
+    fetchKnowledgeBases();
+  }, []);
 
   // 轮询检查文档处理状态
   const pollAllDocuments = useCallback(async () => {
@@ -153,14 +179,20 @@ export default function DocumentUploader() {
 
       <div className={styles.card}>
         <div>
-          <label className={styles.label}>知识库 ID</label>
-          <input
-            type="text"
+          <label className={styles.label}>知识库</label>
+          <select
             value={kbId}
             onChange={(e) => setKbId(e.target.value)}
-            placeholder="输入知识库 UUID"
-            className={styles.textInput}
-          />
+            className={styles.selectInput}
+            disabled={loadingKbs}
+          >
+            <option value="">选择知识库</option>
+            {knowledgeBases.map((kb) => (
+              <option key={kb.id} value={kb.id}>
+                {kb.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>

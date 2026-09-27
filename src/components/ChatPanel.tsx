@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, Fragment } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import styles from "./ChatPanel.module.css";
 
 interface Source {
@@ -60,6 +63,16 @@ function parseContentWithRefs(text: string) {
   return { parts, refList: [...refMap.values()], refIndices };
 }
 
+// 共享的 Markdown 渲染配置（参照 markdown-editor.tsx 的做法提取复用）
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{children}</p>
+  ),
+  sup: ({ children }: { children?: React.ReactNode }) => (
+    <sup className={styles.ref}>{children}</sup>
+  ),
+};
+
 // 渲染带角标的消息内容
 function MessageContent({ content }: { content: string }) {
   const { parts, refList, refIndices } = useMemo(
@@ -67,27 +80,41 @@ function MessageContent({ content }: { content: string }) {
     [content],
   );
 
-  // 如果没有来源标注，直接渲染纯文本
+  // 没有来源标注，直接渲染 Markdown
   if (refList.length === 0) {
-    return <p>{content}</p>;
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={markdownComponents}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }
 
-  let refIndexPointer = 0;
+  // 有来源标注：把 [来源:xxx] 替换成 <sup>序号</sup>，
+  // rehypeRaw 会解析这段内联 HTML，再由 components.sup 套样式
+  let refPointer = 0;
+  const contentWithRefs = parts
+    .map((part) => {
+      if (part.type === "text") {
+        return part.value;
+      }
+      const idx = refIndices[refPointer++]!;
+      return `<sup>${idx}</sup>`;
+    })
+    .join("");
+
   return (
     <>
-      <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-        {parts.map((part, i) => {
-          if (part.type === "text") {
-            return <Fragment key={i}>{part.value}</Fragment>;
-          }
-          const correctIndex = refIndices[refIndexPointer++]!;
-          return (
-            <sup key={i} className={styles.ref}>
-              {correctIndex}
-            </sup>
-          );
-        })}
-      </p>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={markdownComponents}
+      >
+        {contentWithRefs}
+      </ReactMarkdown>
       <div className={styles.refList}>
         {refList.map((ref, i) => (
           <div key={i} className={styles.refItem}>

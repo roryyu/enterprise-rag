@@ -4,9 +4,9 @@ import { knowledgeBases, kbPermissions } from '@/lib/db/schema';
 import { getDepartmentFromRequest } from '@/lib/auth/permissions';
 import { eq } from 'drizzle-orm';
 
-// GET: list knowledge bases accessible to the requesting department
+// GET: 列出当前部门可访问的知识库
 export async function GET(request: NextRequest) {
-  const department = getDepartmentFromRequest(request);
+  const department = await getDepartmentFromRequest(request);
 
   const accessibleKbs = await db
     .select({
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const { name } = body as { name?: string };
-  const department = getDepartmentFromRequest(request);
+  const department = await getDepartmentFromRequest(request);
 
   if (!name || !department) {
     return NextResponse.json({ error: 'name and department are required' }, { status: 400 });
